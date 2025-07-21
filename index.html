@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portfolio & AI Resume Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Set up Tailwind's dark mode to work with a class
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @keyframes gradient-animation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        html {
+            scroll-behavior: smooth;
+        }
+        body {
+            font-family: 'Poppins', sans-serif;
+        }
+        
+        /* New Resume Styles */
+        #resume-preview {
+            font-family: 'Lora', serif;
+            color: #333;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+        }
+        .resume-header {
+            background-color: #4A5568; /* Slate Gray */
+            color: white;
+            padding: 2.5rem 1.5rem;
+            text-align: center;
+        }
+        .resume-header h1 {
+            font-size: 2.8rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+        .resume-body {
+            display: grid;
+            grid-template-columns: 2fr 1fr; /* 2/3 for left, 1/3 for right */
+            gap: 2rem;
+            padding: 1.5rem;
+        }
+        .resume-heading {
+            font-size: 1.1rem;
+            font-weight: 700;
+            border-bottom: 2px solid #333;
+            padding-bottom: 0.3rem;
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+        .resume-right .resume-heading {
+            border-color: #6B7280;
+        }
+        .contact-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+        .experience-item {
+            margin-bottom: 1.5rem;
+        }
+        .experience-header {
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+        .experience-subheader {
+            display: flex;
+            justify-content: space-between;
+            font-style: italic;
+            font-size: 0.9rem;
+            color: #4A5568;
+            margin-bottom: 0.25rem;
+        }
+        .experience-item ul {
+            list-style-type: disc;
+            padding-left: 1.25rem;
+            font-size: 0.95rem;
+        }
+        .skills-list {
+            font-size: 0.95rem;
+        }
+        .skills-list p {
+            margin-bottom: 0.25rem;
+        }
+
+        .portfolio-card {
+            background: white;
+            @apply rounded-xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-2;
+        }
+        
+        /* Dark mode styles for the resume preview */
+        .dark #resume-preview {
+            background: #1a202c;
+            color: #e2e8f0;
+            border-color: #4a5568;
+        }
+        .dark #resume-preview h1, .dark #resume-preview .experience-header {
+            color: #ffffff;
+        }
+        .dark #resume-preview .contact-info, .dark #resume-preview .experience-subheader {
+            color: #a0aec0;
+        }
+        .dark #resume-preview .resume-heading {
+            color: #6366f1;
+            border-color: #4a5568;
+        }
+        .dark #resume-preview .contact-info a {
+            color: #818cf8;
+        }
+
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 transition-colors duration-300">
+
+    <!-- FORM INPUT VIEW -->
+    <div id="form-input-view" class="container mx-auto p-4 md:p-8 relative">
+        <!-- Dark Mode Toggle -->
+        <div class="absolute top-6 right-6">
+            <button id="dark-mode-toggle" class="p-3 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 transition-colors duration-300 shadow-md">
+                <i class="fas fa-moon text-xl"></i>
+            </button>
+        </div>
+
+        <div class="text-center mb-16">
+            <h1 class="text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-white">Portfolio & Resume Generator</h1>
+            <p class="text-gray-500 dark:text-gray-400 mt-2 text-lg">Craft your professional story. Fill in the details to generate a stunning portfolio.</p>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl">
+            <form id="portfolio-form" class="p-8 md:p-12">
+                <!-- Personal Details -->
+                <section class="mb-12">
+                    <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-6 border-b dark:border-gray-600 pb-4">Personal Details</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                        <div><label class="font-semibold block mb-2 text-gray-700 dark:text-gray-300">Full Name</label><input type="text" id="name" class="form-input bg-gray-100 dark:bg-gray-700 dark:text-gray-200 dark:placeholder-gray-400" required></div>
+                        <div><label class="font-semibold block mb-2 text-gray-700 dark:text-gray-300">Professional Title</label><input type="text" id="title" class="form-input bg-gray-100 dark:bg-gray-700 dark:text-gray-200 dark:placeholder-gray-400" placeholder="e.g., Software Engineer" required></div>
+                        <div><label class="font-semibold block mb-2 text-gray-700 dark:text-gray-300">Email</label><input type="email" id="email" class="form-input bg-gray-100 dark:bg-gray-700 dark:text-gray-200 dark:placeholder-gray-400" required></div>
+                        <div><label class="font-semibold block mb-2 text-gray-700 dark:text-gray-300">Phone Number</label><input type="tel" id="phone" class="form-input bg-gray-100 dark:bg-gray-700 dark:text-gray-200 dark:placeholder-gray-400"></div>
+                        <div><label class="font-semibold block mb-2 text-gray-700 dark:text-gray-300">LinkedIn URL</label><input type="url" id="linkedin" class="form-input bg-gray-100 dark:bg-gray-700 dark:text-gray-200 dark:placeholder-gray-400" placeholder="https://linkedin.com/in/your-profile"></div>
+                        <div><label class="font-semibold block mb-2 text-gray-700 dark:text-gray-300">GitHub URL</label><input type="url" id="github" class="form-input bg-gray-100 dark:bg-gray-700 dark:text-gray-200 dark:placeholder-gray-400" placeholder="https://github.com/your-username"></div>
+                    </div>
+                </section>
+
+                <!-- Skills -->
+                <section class="mb-12">
+                    <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-6 border-b dark:border-gray-600 pb-4">Skills</h2>
+                    <div><label class="font-semibold block mb-2 text-gray-700 dark:text-gray-300">List your skills (comma separated)</label><input type="text" id="skills" class="form-input bg-gray-100 dark:bg-gray-700 dark:text-gray-200 dark:placeholder-gray-400" placeholder="e.g., JavaScript, React, Python"></div>
+                </section>
+
+                <!-- Work Experience -->
+                <section class="mb-12">
+                    <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-6 border-b dark:border-gray-600 pb-4">Work Experience</h2>
+                    <div id="work-experience-list"></div>
+                    <button type="button" id="add-work-btn" class="add-btn"><i class="fas fa-plus mr-2"></i>Add Experience</button>
+                </section>
+
+                <!-- Education -->
+                <section class="mb-12">
+                    <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-6 border-b dark:border-gray-600 pb-4">Education</h2>
+                    <div id="education-list"></div>
+                    <button type="button" id="add-education-btn" class="add-btn"><i class="fas fa-plus mr-2"></i>Add Education</button>
+                </section>
+
+                <!-- Projects -->
+                <section class="mb-12">
+                    <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-6 border-b dark:border-gray-600 pb-4">Projects</h2>
+                    <div id="project-list"></div>
+                    <button type="button" id="add-project-btn" class="add-btn"><i class="fas fa-plus mr-2"></i>Add Project</button>
+                </section>
+
+                <!-- Certifications -->
+                <section class="mb-12">
+                    <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-6 border-b dark:border-gray-600 pb-4">Most Famous Certifications</h2>
+                    <div id="static-certification-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Checkboxes will be injected here -->
+                    </div>
+                </section>
+
+                <div class="text-center mt-12 border-t dark:border-gray-600 pt-8">
+                    <button type="submit" id="generate-btn" class="text-white font-bold text-xl py-4 px-16 rounded-lg transition-all duration-500 transform hover:scale-105 shadow-2xl bg-indigo-600 hover:bg-indigo-700">
+                        <i class="fas fa-magic mr-3"></i>Generate My Portfolio
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- PORTFOLIO & RESUME OUTPUT VIEW -->
+    <div id="portfolio-output" class="hidden">
+        <!-- Hero Section -->
+        <header class="text-white text-center py-24 bg-gray-800">
+            <div class="container mx-auto">
+                <h1 id="portfolio-name" class="text-5xl md:text-7xl font-bold"></h1>
+                <p id="portfolio-title" class="text-2xl text-indigo-300 mt-4"></p>
+                <div id="portfolio-links" class="mt-8 space-x-6"></div>
+            </div>
+        </header>
+
+        <main class="container mx-auto p-4 md:p-8 -mt-20">
+            <!-- Projects Section -->
+            <section id="portfolio-projects-section" class="mb-16">
+                <h2 class="text-4xl font-bold text-center mb-12 text-gray-700 dark:text-white">My Projects</h2>
+                <div id="portfolio-projects-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"></div>
+            </section>
+
+             <!-- Certifications Section -->
+            <section id="portfolio-certifications-section" class="mb-16">
+                <h2 class="text-4xl font-bold text-center mb-12 text-gray-700 dark:text-white">Most Famous Certifications</h2>
+                <div id="portfolio-certifications-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"></div>
+            </section>
+            
+            <!-- Resume Section -->
+            <section class="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-2xl">
+                <h2 class="text-4xl font-bold text-center mb-6 text-gray-700 dark:text-white">Downloadable Resume</h2>
+                <div class="flex justify-center gap-4 mb-8">
+                    <button id="download-pdf-btn" class="bg-red-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-red-600 transition transform hover:scale-105 shadow-lg"><i class="fas fa-file-pdf mr-2"></i>Download PDF</button>
+                    <button id="download-jpg-btn" class="bg-blue-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-600 transition transform hover:scale-105 shadow-lg"><i class="fas fa-file-image mr-2"></i>Download JPG</button>
+                </div>
+                <div id="resume-container" class="max-w-4xl mx-auto">
+                    <div id="resume-preview" class="bg-white"></div>
+                </div>
+            </section>
+        </main>
+        
+        <button id="back-to-edit-btn" class="fixed bottom-5 right-5 bg-gray-800 text-white w-16 h-16 rounded-full shadow-lg hover:bg-black z-50 flex items-center justify-center text-2xl transform hover:rotate-90 transition-transform duration-300">
+            <i class="fas fa-edit"></i>
+        </button>
+    </div>
+
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- DARK MODE LOGIC ---
+        const darkModeToggle = document.getElementById('dark-mode-toggle');
+        const htmlEl = document.documentElement;
+
+        const setTheme = (theme) => {
+            if (theme === 'dark') {
+                htmlEl.classList.add('dark');
+                darkModeToggle.innerHTML = '<i class="fas fa-sun text-xl"></i>';
+                localStorage.setItem('theme', 'dark');
+            } else {
+                htmlEl.classList.remove('dark');
+                darkModeToggle.innerHTML = '<i class="fas fa-moon text-xl"></i>';
+                localStorage.setItem('theme', 'light');
+            }
+        };
+
+        const savedTheme = localStorage.getItem('theme');
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+        if (savedTheme) {
+            setTheme(savedTheme);
+        } else if (prefersDark) {
+            setTheme('dark');
+        }
+
+        darkModeToggle.addEventListener('click', () => {
+            if (htmlEl.classList.contains('dark')) {
+                setTheme('light');
+            } else {
+                setTheme('dark');
+            }
+        });
+
+        // --- DYNAMIC FORM LOGIC ---
+        const addWorkBtn = document.getElementById('add-work-btn');
+        const workList = document.getElementById('work-experience-list');
+        const addEducationBtn = document.getElementById('add-education-btn');
+        const educationList = document.getElementById('education-list');
+        const addProjectBtn = document.getElementById('add-project-btn');
+        const projectList = document.getElementById('project-list');
+        const staticCertificationList = document.getElementById('static-certification-list');
+
+        const famousCertifications = [
+            { name: 'Microsoft Certified: Azure Fundamentals (AZ-900)', org: 'Microsoft', link: 'https://docs.microsoft.com/en-us/learn/certifications/azure-fundamentals/' },
+            { name: 'AWS Certified Cloud Practitioner', org: 'Amazon Web Services', link: 'https://aws.amazon.com/certification/certified-cloud-practitioner/' },
+            { name: 'Google Cloud Certified: Professional Cloud Architect', org: 'Google', link: 'https://cloud.google.com/certification/cloud-architect' },
+            { name: 'Certified Information Systems Security Professional (CISSP)', org: '(ISC)²', link: 'https://www.isc2.org/Certifications/CISSP' },
+            { name: 'CompTIA Security+', org: 'CompTIA', link: 'https://www.comptia.org/certifications/security' },
+            { name: 'Google Data Analytics Professional Certificate', org: 'Google / Coursera', link: 'https://www.coursera.org/professional-certificates/google-data-analytics' }
+        ];
+
+        function renderCertificationCheckboxes() {
+            famousCertifications.forEach(cert => {
+                const checkboxDiv = document.createElement('div');
+                checkboxDiv.className = 'flex items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg';
+                checkboxDiv.innerHTML = `
+                    <input id="${cert.name.replace(/\s/g, '')}" type="checkbox" data-name="${cert.name}" data-org="${cert.org}" data-link="${cert.link}" class="w-5 h-5 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500 dark:focus:ring-indigo-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-600 dark:border-gray-500">
+                    <label for="${cert.name.replace(/\s/g, '')}" class="ml-3 text-sm font-medium text-gray-900 dark:text-gray-300">
+                        ${cert.name} <span class="text-xs text-gray-500 dark:text-gray-400">(${cert.org})</span>
+                    </label>
+                `;
+                staticCertificationList.appendChild(checkboxDiv);
+            });
+        }
+
+        function createItem(list, type) {
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'border bg-gray-50 dark:bg-gray-700 dark:border-gray-600 p-6 rounded-lg mb-6 relative shadow-sm';
+            
+            let content = '';
+            if (type === 'education') {
+                content = `
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div><label class="font-semibold block mb-2 text-sm text-gray-600 dark:text-gray-300">School / University</label><input type="text" class="form-input data-${type}-school bg-gray-100 dark:bg-gray-600 dark:text-gray-200 dark:placeholder-gray-400" required></div>
+                        <div><label class="font-semibold block mb-2 text-sm text-gray-600 dark:text-gray-300">Degree / Field of Study</label><input type="text" class="form-input data-${type}-degree bg-gray-100 dark:bg-gray-600 dark:text-gray-200 dark:placeholder-gray-400" required></div>
+                    </div>
+                    <div class="mt-6"><label class="font-semibold block mb-2 text-sm text-gray-600 dark:text-gray-300">Graduation Date</label><input type="text" placeholder="e.g., May 2024" class="form-input data-${type}-date bg-gray-100 dark:bg-gray-600 dark:text-gray-200 dark:placeholder-gray-400"></div>
+                `;
+            } else { // work, internship, project
+                 content = `
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div><label class="font-semibold block mb-2 text-sm text-gray-600 dark:text-gray-300">Company Name / Project Title</label><input type="text" class="form-input data-${type}-company bg-gray-100 dark:bg-gray-600 dark:text-gray-200 dark:placeholder-gray-400" required></div>
+                        <div><label class="font-semibold block mb-2 text-sm text-gray-600 dark:text-gray-300">Job Title / Tech Stack</label><input type="text" class="form-input data-${type}-title bg-gray-100 dark:bg-gray-600 dark:text-gray-200 dark:placeholder-gray-400" required></div>
+                        <div><label class="font-semibold block mb-2 text-sm text-gray-600 dark:text-gray-300">Start Date</label><input type="text" placeholder="e.g., Jan 2022" class="form-input data-${type}-start bg-gray-100 dark:bg-gray-600 dark:text-gray-200 dark:placeholder-gray-400"></div>
+                        <div><label class="font-semibold block mb-2 text-sm text-gray-600 dark:text-gray-300">End Date</label><input type="text" placeholder="e.g., Present" class="form-input data-${type}-end bg-gray-100 dark:bg-gray-600 dark:text-gray-200 dark:placeholder-gray-400"></div>
+                    </div>
+                    <div class="mt-6"><label class="font-semibold block mb-2 text-sm text-gray-600 dark:text-gray-300">Description / Responsibilities (use '|' for bullet points)</label><textarea class="form-input data-${type}-desc bg-gray-100 dark:bg-gray-600 dark:text-gray-200 dark:placeholder-gray-400" rows="3"></textarea></div>
+                    ${type === 'project' ? `<div class="mt-6"><label class="font-semibold block mb-2 text-sm text-gray-600 dark:text-gray-300">Project Link</label><input type="url" class="form-input data-${type}-link bg-gray-100 dark:bg-gray-600 dark:text-gray-200 dark:placeholder-gray-400"></div>` : ''}
+                `;
+            }
+
+            itemDiv.innerHTML = content + `<button type="button" class="remove-btn"><i class="fas fa-times"></i></button>`;
+            list.appendChild(itemDiv);
+            itemDiv.querySelector('.remove-btn').addEventListener('click', () => itemDiv.remove());
+        }
+
+        addWorkBtn.addEventListener('click', () => createItem(workList, 'work'));
+        addEducationBtn.addEventListener('click', () => createItem(educationList, 'education'));
+        addProjectBtn.addEventListener('click', () => createItem(projectList, 'project'));
+
+        // Trigger initial items
+        createItem(workList, 'work');
+        createItem(educationList, 'education');
+        createItem(projectList, 'project');
+        renderCertificationCheckboxes();
+
+
+        // --- FORM SUBMISSION & DATA GATHERING ---
+        const portfolioForm = document.getElementById('portfolio-form');
+        const formView = document.getElementById('form-input-view');
+        const portfolioView = document.getElementById('portfolio-output');
+        const generateBtn = document.getElementById('generate-btn');
+
+        portfolioForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            generateBtn.disabled = true;
+            generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-3"></i>Generating...';
+
+            const portfolioData = {
+                personal: {
+                    name: document.getElementById('name').value,
+                    title: document.getElementById('title').value,
+                    email: document.getElementById('email').value,
+                    phone: document.getElementById('phone').value,
+                    linkedin: document.getElementById('linkedin').value,
+                    github: document.getElementById('github').value,
+                },
+                skills: document.getElementById('skills').value,
+                work: [],
+                education: [],
+                projects: [],
+                certifications: []
+            };
+
+            const collectData = (list, type) => {
+                return Array.from(list.querySelectorAll('.border')).map(item => {
+                    if (type === 'education') {
+                        return {
+                            school: item.querySelector(`.data-${type}-school`).value,
+                            degree: item.querySelector(`.data-${type}-degree`).value,
+                            date: item.querySelector(`.data-${type}-date`).value,
+                        }
+                    }
+                    return { // work, project, etc.
+                        company: item.querySelector(`.data-${type}-company`).value,
+                        title: item.querySelector(`.data-${type}-title`).value,
+                        start: item.querySelector(`.data-${type}-start`).value,
+                        end: item.querySelector(`.data-${type}-end`).value,
+                        description: item.querySelector(`.data-${type}-desc`).value,
+                        link: type === 'project' ? item.querySelector(`.data-${type}-link`)?.value : undefined
+                    }
+                }).filter(item => item.company || item.title || item.school);
+            };
+
+            portfolioData.work = collectData(workList, 'work');
+            portfolioData.education = collectData(educationList, 'education');
+            portfolioData.projects = collectData(projectList, 'project');
+            
+            const selectedCerts = [];
+            staticCertificationList.querySelectorAll('input[type="checkbox"]:checked').forEach(checkbox => {
+                selectedCerts.push({
+                    name: checkbox.dataset.name,
+                    org: checkbox.dataset.org,
+                    link: checkbox.dataset.link
+                });
+            });
+            portfolioData.certifications = selectedCerts;
+
+            
+            // --- AI SUMMARY GENERATION ---
+            const summaryPrompt = `Generate a professional resume summary for ${portfolioData.personal.name}, a ${portfolioData.personal.title}. Key projects include: ${portfolioData.projects.map(p => p.title).join(', ')}. Work experience: ${portfolioData.work.map(w => `${w.title} at ${w.company}`).join('; ')}. The summary should be 2-3 sentences long, impactful, and tailored for a resume.`;
+            
+            try {
+                // Mock API call
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                portfolioData.aiSummary = `A results-driven ${portfolioData.personal.title} with demonstrated success in developing innovative solutions. Proficient in technologies showcased in projects like ${portfolioData.projects[0]?.title || 'various applications'}. Combines hands-on experience from roles at ${portfolioData.work[0]?.company || 'leading firms'} with a passion for creating efficient and user-friendly software.`;
+            } catch (error) {
+                console.error("AI Generation failed:", error);
+                portfolioData.aiSummary = "Experienced professional seeking to leverage skills in a challenging new role.";
+            }
+
+            renderPortfolio(portfolioData);
+
+            formView.style.display = 'none';
+            portfolioView.style.display = 'block';
+            window.scrollTo(0, 0);
+            generateBtn.disabled = false;
+            generateBtn.innerHTML = '<i class="fas fa-magic mr-3"></i>Generate My Portfolio';
+        });
+        
+        // --- RENDER PORTFOLIO & RESUME ---
+        function renderPortfolio(data) {
+            document.getElementById('portfolio-name').innerText = data.personal.name;
+            document.getElementById('portfolio-title').innerText = data.personal.title;
+            
+            const portfolioLinks = document.getElementById('portfolio-links');
+            portfolioLinks.innerHTML = `
+                ${data.personal.linkedin ? `<a href="${data.personal.linkedin}" target="_blank" class="text-4xl hover:text-indigo-200 transition"><i class="fab fa-linkedin"></i></a>` : ''}
+                ${data.personal.github ? `<a href="${data.personal.github}" target="_blank" class="text-4xl hover:text-indigo-200 transition"><i class="fab fa-github"></i></a>` : ''}
+                ${data.personal.email ? `<a href="mailto:${data.personal.email}" class="text-4xl hover:text-indigo-200 transition"><i class="fas fa-envelope"></i></a>` : ''}
+            `;
+
+            const projectsGrid = document.getElementById('portfolio-projects-grid');
+            projectsGrid.innerHTML = data.projects.map(p => `
+                <div class="portfolio-card bg-white dark:bg-gray-800">
+                    <div class="p-6">
+                        <h3 class="text-xl font-bold mb-2 text-gray-800 dark:text-white">${p.title}</h3>
+                        <p class="text-indigo-600 dark:text-indigo-400 font-semibold text-sm mb-3">${p.company}</p>
+                        <p class="text-gray-600 dark:text-gray-300 mb-4 h-24 overflow-y-auto">${p.description.replace(/\|/g, ', ')}</p>
+                        ${p.link ? `<a href="${p.link}" target="_blank" class="font-bold text-indigo-600 dark:text-indigo-400 hover:underline">View Project &rarr;</a>` : ''}
+                    </div>
+                </div>
+            `).join('');
+
+            const certificationsGrid = document.getElementById('portfolio-certifications-grid');
+            certificationsGrid.innerHTML = data.certifications.map(c => `
+                <div class="portfolio-card bg-white dark:bg-gray-800">
+                    <div class="p-6">
+                        <h3 class="text-xl font-bold mb-2 text-gray-800 dark:text-white">${c.name}</h3>
+                        <p class="text-gray-500 dark:text-gray-400 font-semibold text-sm mb-3">${c.org}</p>
+                        ${c.link ? `<a href="${c.link}" target="_blank" class="font-bold text-indigo-600 dark:text-indigo-400 hover:underline">View Credential &rarr;</a>` : ''}
+                    </div>
+                </div>
+            `).join('');
+
+            const resumePreview = document.getElementById('resume-preview');
+            
+            const renderExperienceSection = (items) => {
+                return items.map(item => `
+                    <div class="experience-item">
+                        <div class="experience-subheader">
+                            <span>${item.company}</span>
+                            <span>${item.start} - ${item.end}</span>
+                        </div>
+                        <div class="experience-header">${item.title}</div>
+                        <ul>${item.description.split('|').map(d => d.trim() ? `<li>${d.trim()}</li>` : '').join('')}</ul>
+                    </div>
+                `).join('');
+            };
+
+            const renderEducationSection = (items) => {
+                return items.map(item => `
+                    <div class="experience-item">
+                        <div class="experience-header">${item.school}</div>
+                        <div class="experience-subheader">
+                            <span>${item.degree}</span>
+                            <span>${item.date}</span>
+                        </div>
+                    </div>
+                `).join('');
+            };
+
+            resumePreview.innerHTML = `
+                <div class="resume-header">
+                    <h1>${data.personal.name}</h1>
+                </div>
+                <div class="resume-body">
+                    <div class="resume-left">
+                        <h2 class="resume-heading">Career Objective</h2>
+                        <p style="font-size: 0.95rem;">${data.aiSummary}</p>
+                        
+                        <h2 class="resume-heading">Professional Experience</h2>
+                        ${renderExperienceSection(data.work)}
+                        
+                        <h2 class="resume-heading">Projects</h2>
+                        ${renderExperienceSection(data.projects)}
+                    </div>
+                    <div class="resume-right">
+                        <div class="contact-info">
+                            <div class="contact-item"><i class="fas fa-phone"></i><span>${data.personal.phone}</span></div>
+                            <div class="contact-item"><i class="fas fa-envelope"></i><span>${data.personal.email}</span></div>
+                            <div class="contact-item"><i class="fab fa-linkedin"></i><span>${data.personal.linkedin.replace('https://','')}</span></div>
+                        </div>
+
+                        <h2 class="resume-heading">Education</h2>
+                        ${renderEducationSection(data.education)}
+
+                        <h2 class="resume-heading">Relevant Skills</h2>
+                        <div class="skills-list">
+                            ${data.skills.split(',').map(skill => `<p>${skill.trim()}</p>`).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // --- PDF & JPG DOWNLOAD ---
+        const { jsPDF } = window.jspdf;
+        const downloadPdfBtn = document.getElementById('download-pdf-btn');
+        const downloadJpgBtn = document.getElementById('download-jpg-btn');
+        const resumeContainer = document.getElementById('resume-preview');
+
+        async function download(format, btn) {
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processing...';
+            btn.disabled = true;
+
+            const canvas = await html2canvas(resumeContainer, { scale: 3 });
+            if (format === 'pdf') {
+                const imgData = canvas.toDataURL('image/png');
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                pdf.save("resume.pdf");
+            } else { // JPG
+                const link = document.createElement('a');
+                link.download = 'resume.jpg';
+                link.href = canvas.toDataURL('image/jpeg', 0.9);
+                link.click();
+            }
+            
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+
+        downloadPdfBtn.addEventListener('click', (e) => download('pdf', e.currentTarget));
+        downloadJpgBtn.addEventListener('click', (e) => download('jpg', e.currentTarget));
+
+        // --- BACK TO EDITOR ---
+        document.getElementById('back-to-edit-btn').addEventListener('click', () => {
+            portfolioView.style.display = 'none';
+            formView.style.display = 'block';
+            window.scrollTo(0, 0);
+        });
+    });
+    </script>
+</body>
+</html>
